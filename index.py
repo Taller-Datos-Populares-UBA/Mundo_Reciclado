@@ -1,44 +1,24 @@
 from dash import Dash, dcc, html, dash_table, callback, Output, Input, State
 import pandas as pd
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+from data_processing import get_price, calculate_monthly_total
+from cargas_dataframe import MTEDataFrame
 
+MTEDataFrame.FILES_TO_LOAD = ["Copia de BASE OPERACIÓN - AVELLANEDA.xlsx"]
+df = MTEDataFrame.get_instance()
 
-columns = ['FECHA', 'ORIGEN', 'NRO LEGAJO', 'APELLIDO', 'NOMBRE', 'APODO',
-           'DNI', 'CUIT', 'FRECUENCIA DE PAGO', 'MODALIDAD DE PAGO',
-           'MATERIAL', 'KG', 'OBSERVACIONES', 'PRECIO x KG', 'KG VALORIZADO']
-
-
-def read_excel_sheet(filename, sheet_name):
-    '''Read the excel sheet with the data and normalize the data
-    '''
-
-    df = pd.read_excel(filename, sheet_name=sheet_name, header=3)
-    df.rename({"Unnamed: 2": "NRO LEGAJO", " ": "FECHA", "MEZCLA": "MATERIAL",
-               "Unnamed: 1": "ORIGEN"}, axis=1, inplace=True)
-    dtypes = {"NRO LEGAJO": "Int64", "MATERIAL": str}
-    df.astype(dtypes)
-    df["KG"] = pd.to_numeric(df.KG, errors='coerce', downcast="integer")
-    df["CUIT"] = pd.to_numeric(df.CUIT.replace("-", ""), errors='coerce',
-                               downcast="integer")
-    df["FECHA"] = pd.to_datetime(df["FECHA"], dayfirst=True, errors='coerce')
-    df["MATERIAL"] = df["MATERIAL"].str.title()
-    df = df[columns[:-2]]  # ["NRO LEGAJO", "FECHA", "MATERIAL", "PESO"]]
-    return df
-
-
-df = read_excel_sheet("Copia de BASE OPERACIÓN - AVELLANEDA.xlsx",
-                      "INGRESO DE MATERIAL")
 price_df = pd.read_excel("PLANILLA BASE para armar SOLICITUD PAGO (2).xlsx",
                          sheet_name="BASE PRECIOS")
 price_df.dropna(inplace=True)
 price_df["MATERIAL"] = price_df["MATERIAL"].str.title()
+price_df["MATERIAL"] = price_df["MATERIAL"].str.strip()
 
 # Initialize app
 app = Dash(__name__)
 
 
 app.layout = html.Div(children=[
-    html.Div(children="Interactive App"),
+    html.Div(children="Tablero Mundo Reciclado"),
     dash_table.DataTable(id="summary-table", data=[], page_size=10),
 
     html.Div(id="total-table"),
@@ -49,13 +29,27 @@ app.layout = html.Div(children=[
                          data=price_df.to_dict("records"), persistence=True,
                          persisted_props=["data"], editable=True),
     # Add dropdown
-    dcc.DatePickerRange(
-        id='date-picker',
-        min_date_allowed=date(2015, 8, 5),
-        max_date_allowed=date.today(),
-        start_date=date.today()-timedelta(weeks=4),
-        end_date=date.today()
-    ),
+    html.Div(children=[
+        "Filtrar por las siguientes fechas:",
+        dcc.DatePickerRange(
+            id='date-picker',
+            min_date_allowed=date(2015, 8, 5),
+            max_date_allowed=date.today(),
+            start_date=date.today()-timedelta(weeks=4),
+            end_date=date.today()
+        )
+    ]),
+    html.Div(children=[
+        "Periodo para calcular el bono:",
+        dcc.DatePickerSingle(
+            id="bonus-button",
+            min_date_allowed=date(2015, 8, 5),
+            max_date_allowed=date.today(),
+            date=date.today(),
+            display_format="MM/YYYY"
+        )
+    ]),
+    html.Br(),
     html.Button('Guardar', id='save-button', n_clicks=0),  # Add a save button
     # Add a Div that displays the status
     html.Div(id="save-status", children=["Nothing saved yet"])
@@ -71,10 +65,11 @@ app.layout = html.Div(children=[
         Input(component_id='date-picker', component_property='start_date'),
         Input(component_id='date-picker', component_property='end_date'),
         Input(component_id='price-table', component_property='data'),
-        Input(component_id='price-table', component_property='columns')
+        Input(component_id='price-table', component_property='columns'),
+        Input(component_id='bonus-button', component_property='date')
     ]
 )
-def update_table(start_date, end_date, rows, columns):
+def update_table(start_date, end_date, rows, columns, bonus_date):
     try:
         df_filter = df.loc[df.FECHA >= start_date].copy()
         df_filter = df_filter.loc[df.FECHA <= end_date].copy()
@@ -82,8 +77,12 @@ def update_table(start_date, end_date, rows, columns):
         print("An error ocurred while filtering the dataframe")
     df_filter["FECHA"] = pd.DatetimeIndex(df_filter.FECHA).date
     current_prices = pd.DataFrame(rows, columns=[c['name'] for c in columns])
+    bonus_date = pd.to_datetime(bonus_date)
+    bonus_month = bonus_date.month
+    bonus_year = bonus_date.year
+    monthly_total = calculate_monthly_total(df, bonus_month, bonus_year)
     df_filter["PRECIO POR KG"] = df_filter.apply(get_price, axis=1,
-                                                 args=[current_prices])
+                                                 args=[current_prices, monthly_total])
     df_filter["KG VALORIZADO"] = df_filter["PRECIO POR KG"]*df_filter["KG"]
     df_group = df_filter[["CUIT",
                           "KG VALORIZADO"]].groupby("CUIT").sum().reset_index()
@@ -93,17 +92,6 @@ def update_table(start_date, end_date, rows, columns):
     return df_filter, total_table
 
 
-def get_price(row, data_precios):
-    material = row.MATERIAL
-    df_precios = data_precios
-    price = df_precios.loc[df_precios.MATERIAL == material]["PRECIO POR KG"]
-    try:
-        price = int(price.iloc[0])
-    except Exception:
-        print(f"Hay un material desconocido:{material}")
-        price = 0
-
-    return price
 
 
 # Callback to save table data to Excel
@@ -116,7 +104,7 @@ def save_table_data_to_excel(table_data, n_clicks):
     df_filter = pd.DataFrame(table_data)
     sheet_name = "INGRESO DE MATERIAL VALORIZADO "
     if n_clicks == 0:
-        return "Nothing saved yet"
+        return "Nada guardado aún"
     # Open the file with an Excel writer object
     try:
         file = "PLANILLA BASE para armar SOLICITUD PAGO (2).xlsx"
@@ -128,9 +116,9 @@ def save_table_data_to_excel(table_data, n_clicks):
                                index=False)
     except Exception as error:
         print(error)
-        save_status = "Error while saving the data"
+        save_status = "Error al guardar los datos"
     else:
-        save_status = "Data successfully saved"
+        save_status = "Datos guardados exitosamente"
     return save_status
 
 
