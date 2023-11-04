@@ -20,12 +20,14 @@ def get_price(row, price_data, summary_df, threshold=1000):
     '''Función que obtiene el precio de un dado material.
     '''
     material = row.MATERIAL
+    origen = row.ORIGEN
+
     try:
         monthly_total = summary_df[summary_df.CUIT == row["CUIT"]]["KG"].iloc[0]
         bonus = monthly_total >= threshold
     except Exception:
         bonus = False
-    if bonus and any(price_data.MATERIAL == material+"_Bono"):
+    if bonus and any(price_data.MATERIAL == material+"_Bono") and origen == "Ruta":
         material += "_Bono"
     
     price = price_data.loc[price_data.MATERIAL == material]["PRECIO POR KG"]
