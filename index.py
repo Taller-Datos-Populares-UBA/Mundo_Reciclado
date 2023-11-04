@@ -4,6 +4,9 @@ from datetime import date, timedelta, datetime
 from data_processing import get_price, calculate_monthly_total
 from cargas_dataframe import MTEDataFrame
 
+import dash_bootstrap_components as dbc
+
+
 MTEDataFrame.FILES_TO_LOAD = ["Copia de BASE OPERACIÓN - AVELLANEDA.xlsx"]
 df = MTEDataFrame.get_instance()
 
@@ -13,8 +16,16 @@ price_df.dropna(inplace=True)
 price_df["MATERIAL"] = price_df["MATERIAL"].str.title()
 price_df["MATERIAL"] = price_df["MATERIAL"].str.strip()
 
+
+# meta_tags are required for the app layout to be mobile responsive
+external_scripts = ["https://cdn.plot.ly/plotly-locale-es-latest.js"]  # Agregamos español como lenguaje
 # Initialize app
-app = Dash(__name__)
+app = Dash(__name__, suppress_callback_exceptions=True,
+                external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css', dbc.themes.LITERA],
+                external_scripts=external_scripts,
+                meta_tags=[{'name': 'viewport',
+                            'content': 'width=device-width, initial-scale=1.0'}]
+                )
 
 
 app.layout = html.Div(children=[
@@ -23,11 +34,27 @@ app.layout = html.Div(children=[
 
     html.Div(id="total-table"),
     dash_table.DataTable(id='price-table',
-                         columns=[{"id": "MATERIAL", "name": "MATERIAL"},
-                                  {"id": "PRECIO POR KG",
-                                   "name": "PRECIO POR KG"}],
-                         data=price_df.to_dict("records"), persistence=True,
-                         persisted_props=["data"], editable=True),
+                        columns=[{"id": "MATERIAL", "name": "MATERIAL"},
+                                 {"id": "PRECIO POR KG",
+                                  "name": "PRECIO POR KG"}],
+                        data=price_df.to_dict("records"), persistence=True,
+                        persisted_props=["data"], editable=True,
+                        style_cell = {
+                           "textOverflow": "ellipsis",
+                           "whiteSpace": "nowrap",
+                           "border": "1px solid black",
+                           "border-left": "2px solid black"
+                        },
+                        style_header = {
+                            "backgroundColor": "#4582ec",
+                            "color": "white",
+                            "border": "0px solid #2c559c",
+                        },
+                        style_table = {
+                            "height": "auto",
+                            "width" : "auto",
+                            "overflowX": "auto"
+                        },),
     # Add dropdown
     html.Div(children=[
         "Filtrar por las siguientes fechas:",
@@ -50,7 +77,7 @@ app.layout = html.Div(children=[
         )
     ]),
     html.Br(),
-    html.Button('Guardar', id='save-button', n_clicks=0),  # Add a save button
+    html.Button('Guardar', id='save-button', n_clicks=0, className='btn btn-primary btn-lg'),  # Add a save button
     # Add a Div that displays the status
     html.Div(id="save-status", children=["Nothing saved yet"])
 ])
