@@ -29,7 +29,8 @@ class MTEDataFrame:
         dtypes = {'CUIT': int,
                   'KG': int,
                   'FECHA': np.datetime64,
-                  'MATERIAL': str}
+                  'MATERIAL': str,
+                  'ORIGEN': str}
         
         dfs_per_date = [cls._read_cargas_excel_sheet(filename) for filename in cls.FILES_TO_LOAD]
         df = pd.concat(dfs_per_date, ignore_index=True)
