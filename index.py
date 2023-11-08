@@ -28,65 +28,98 @@ app = Dash(__name__, suppress_callback_exceptions=True,
                 )
 
 
-app.layout = html.Div(children=[
-    html.Div(children="Tablero Mundo Reciclado"),
-    dash_table.DataTable(id="summary-table", data=[], page_size=10),
-
-    html.Div(id="total-table"),
-    dash_table.DataTable(id='price-table',
-                        columns=[{"id": "MATERIAL", "name": "MATERIAL"},
-                                 {"id": "PRECIO POR KG",
-                                  "name": "PRECIO POR KG"}],
-                        data=price_df.to_dict("records"), persistence=True,
-                        persisted_props=["data"], editable=True,
-                        style_cell = {
-                           "textOverflow": "ellipsis",
-                           "whiteSpace": "nowrap",
-                           "border": "1px solid black",
-                           "border-left": "2px solid black"
-                        },
-                        style_header = {
-                            "backgroundColor": "#4582ec",
-                            "color": "white",
-                            "border": "0px solid #2c559c",
-                        },
-                        style_table = {
-                            "height": "auto",
-                            "width" : "auto",
-                            "overflowX": "auto"
-                        },),
-    # Add dropdown
-    html.Div(children=[
-        "Filtrar por las siguientes fechas:",
-        dcc.DatePickerRange(
-            id='date-picker',
-            min_date_allowed=date(2015, 8, 5),
-            max_date_allowed=date.today(),
-            start_date=date.today()-timedelta(weeks=4),
-            end_date=date.today()
-        )
-    ]),
-    html.Div(children=[
-        "Periodo para calcular el bono:",
-        dcc.DatePickerSingle(
-            id="bonus-button",
-            min_date_allowed=date(2015, 8, 5),
-            max_date_allowed=date.today(),
-            date=date.today(),
-            display_format="MM/YYYY"
-        )
-    ]),
-    html.Br(),
-    html.Button('Guardar', id='save-button', n_clicks=0, className='btn btn-primary btn-lg'),  # Add a save button
-    # Add a Div that displays the status
-    html.Div(id="save-status", children=["Nothing saved yet"])
+app.layout = html.Div([
+        html.Div(id="div-izquierda-panel", className="botonera", children=[
+            html.Div(children=[
+                "Filtrar por las siguientes fechas:",
+                dcc.DatePickerRange(
+                    id='date-picker',
+                    min_date_allowed=date(2015, 8, 5),
+                    max_date_allowed=date.today(),
+                    start_date=date.today()-timedelta(weeks=4),
+                    end_date=date.today()
+                )
+            ]),
+            html.Div(children=[
+                "Periodo para calcular el bono:",
+                dcc.DatePickerSingle(
+                    id="bonus-button",
+                    min_date_allowed=date(2015, 8, 5),
+                    max_date_allowed=date.today(),
+                    date=date.today(),
+                    display_format="MM/YYYY"
+                )
+            ]),
+            html.Button('Guardar', id='save-button', n_clicks=0),  # Add a save button
+            # Add a Div that displays the status
+            html.Div(id="save-status", children=["Nothing saved yet"])
+        ]),
+    html.Div(id="div-derecha", className="output", children=[
+    
+        dash_table.DataTable(id="summary-table", data=[], page_size=10,
+                             style_cell = {
+                            "textOverflow": "ellipsis",
+                            "whiteSpace": "nowrap",
+                            "border": "1px solid black",
+                            "border-left": "2px solid black"
+                            },
+                            style_header = {
+                                "backgroundColor": "#4582ec",
+                                "color": "white",
+                                "border": "0px solid #2c559c",
+                            },
+                            style_table = {
+                                "height": "auto",
+                                "width" : "auto",
+                                "overflowX": "auto"
+                            },),
+        dash_table.DataTable(id="total-table", data=[],page_size=10,
+                             style_cell = {
+                            "textOverflow": "ellipsis",
+                            "whiteSpace": "nowrap",
+                            "border": "1px solid black",
+                            "border-left": "2px solid black"
+                            },
+                            style_header = {
+                                "backgroundColor": "#4582ec",
+                                "color": "white",
+                                "border": "0px solid #2c559c",
+                            },
+                            style_table = {
+                                "height": "auto",
+                                "width" : "auto",
+                                "overflowX": "auto"
+                            },),
+        dash_table.DataTable(id='price-table',
+                            columns=[{"id": "MATERIAL", "name": "MATERIAL"},
+                                    {"id": "PRECIO POR KG",
+                                    "name": "PRECIO POR KG"}],
+                            data=price_df.to_dict("records"), persistence=True,
+                            persisted_props=["data"], editable=True,
+                            style_cell = {
+                            "textOverflow": "ellipsis",
+                            "whiteSpace": "nowrap",
+                            "border": "1px solid black",
+                            "border-left": "2px solid black"
+                            },
+                            style_header = {
+                                "backgroundColor": "#4582ec",
+                                "color": "white",
+                                "border": "0px solid #2c559c",
+                            },
+                            style_table = {
+                                "height": "auto",
+                                "width" : "auto",
+                                "overflowX": "auto"
+                            },),
+    ])
 ])
 
 
 @callback(
     [
         Output(component_id='summary-table', component_property='data'),
-        Output(component_id='total-table', component_property='children')
+        Output(component_id='total-table', component_property='data')
     ],
     [
         Input(component_id='date-picker', component_property='start_date'),
@@ -113,10 +146,9 @@ def update_table(start_date, end_date, rows, columns, bonus_date):
     df_filter["KG VALORIZADO"] = df_filter["PRECIO POR KG"]*df_filter["KG"]
     df_group = df_filter[["CUIT",
                           "KG VALORIZADO"]].groupby("CUIT").sum().reset_index()
-    total_table = dash_table.DataTable(data=df_group.to_dict("records"),
-                                       page_size=10),
+    df_total = df_group.to_dict("records")
     df_filter = df_filter.to_dict("records")
-    return df_filter, total_table
+    return df_filter, df_total
 
 
 
