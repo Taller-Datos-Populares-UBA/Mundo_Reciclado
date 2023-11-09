@@ -3,9 +3,9 @@ import pandas as pd
 from datetime import date, timedelta, datetime
 from data_processing import get_price, calculate_monthly_total
 from cargas_dataframe import MTEDataFrame
+from utils.utils import estilo_tabla
 
 import dash_bootstrap_components as dbc
-
 
 MTEDataFrame.FILES_TO_LOAD = ["Copia de BASE OPERACIÓN - AVELLANEDA.xlsx"]
 df = MTEDataFrame.get_instance()
@@ -30,88 +30,55 @@ app = Dash(__name__, suppress_callback_exceptions=True,
 
 app.layout = html.Div([
         html.Div(id="div-izquierda-panel", className="botonera", children=[
+            html.H6(
+                "Filtros",
+                className="title-botonera"
+            ),
             html.Div(children=[
-                "Filtrar por las siguientes fechas:",
-                dcc.DatePickerRange(
-                    id='date-picker',
-                    min_date_allowed=date(2015, 8, 5),
-                    max_date_allowed=date.today(),
-                    start_date=date.today()-timedelta(weeks=4),
-                    end_date=date.today()
-                )
+                html.Label("Elegí el rango de fechas", className="labels"),
+                html.Div(children=[
+                    dcc.DatePickerRange(
+                        id='date-picker',
+                        min_date_allowed=date(2015, 8, 5),
+                        max_date_allowed=date.today(),
+                        start_date=date.today()-timedelta(weeks=4),
+                        end_date=date.today()
+                    )
+                ], className="dates-container"
+                ),
             ]),
             html.Div(children=[
-                "Periodo para calcular el bono:",
-                dcc.DatePickerSingle(
-                    id="bonus-button",
-                    min_date_allowed=date(2015, 8, 5),
-                    max_date_allowed=date.today(),
-                    date=date.today(),
-                    display_format="MM/YYYY"
-                )
+                html.Label("Elegí el periodo para calcular el bono:", className="labels"),
+                html.Div(children=[
+                    dcc.DatePickerSingle(
+                        id="bonus-button",
+                        min_date_allowed=date(2015, 8, 5),
+                        max_date_allowed=date.today(),
+                        date=date.today(),
+                        display_format="MM/YYYY"
+                    )
+                ], className="dates-container"
+                ),
             ]),
-            html.Button('Guardar', id='save-button', n_clicks=0),  # Add a save button
+            html.Div(children=[
+                html.Button('Guardar', id='save-button', n_clicks=0, className="mr-1 mt-1 btn btn-primary search-button"),  # Add a save button
+                
+            ], className="button-container"
+            ),
             # Add a Div that displays the status
-            html.Div(id="save-status", children=["Nothing saved yet"])
+            html.Div(id="save-status", children=["Nothing saved yet"], className="button-container"),
         ]),
     html.Div(id="div-derecha", className="output", children=[
     
-        dash_table.DataTable(id="summary-table", data=[], page_size=10,
-                             style_cell = {
-                            "textOverflow": "ellipsis",
-                            "whiteSpace": "nowrap",
-                            "border": "1px solid black",
-                            "border-left": "2px solid black"
-                            },
-                            style_header = {
-                                "backgroundColor": "#4582ec",
-                                "color": "white",
-                                "border": "0px solid #2c559c",
-                            },
-                            style_table = {
-                                "height": "auto",
-                                "width" : "auto",
-                                "overflowX": "auto"
-                            },),
-        dash_table.DataTable(id="total-table", data=[],page_size=10,
-                             style_cell = {
-                            "textOverflow": "ellipsis",
-                            "whiteSpace": "nowrap",
-                            "border": "1px solid black",
-                            "border-left": "2px solid black"
-                            },
-                            style_header = {
-                                "backgroundColor": "#4582ec",
-                                "color": "white",
-                                "border": "0px solid #2c559c",
-                            },
-                            style_table = {
-                                "height": "auto",
-                                "width" : "auto",
-                                "overflowX": "auto"
-                            },),
+        dash_table.DataTable(id="summary-table", data=[], page_size=10, **estilo_tabla),
+        dash_table.DataTable(id="total-table", data=[],page_size=10, **estilo_tabla),
         dash_table.DataTable(id='price-table',
                             columns=[{"id": "MATERIAL", "name": "MATERIAL"},
                                     {"id": "PRECIO POR KG",
                                     "name": "PRECIO POR KG"}],
                             data=price_df.to_dict("records"), persistence=True,
                             persisted_props=["data"], editable=True,
-                            style_cell = {
-                            "textOverflow": "ellipsis",
-                            "whiteSpace": "nowrap",
-                            "border": "1px solid black",
-                            "border-left": "2px solid black"
-                            },
-                            style_header = {
-                                "backgroundColor": "#4582ec",
-                                "color": "white",
-                                "border": "0px solid #2c559c",
-                            },
-                            style_table = {
-                                "height": "auto",
-                                "width" : "auto",
-                                "overflowX": "auto"
-                            },),
+                            **estilo_tabla),
     ])
 ])
 
