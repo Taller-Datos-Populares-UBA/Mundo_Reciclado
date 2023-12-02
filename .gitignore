@@ -1,6 +1,7 @@
 # ignore xlsx and xls
 *.xls
 *.xlsx
+*.idea/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

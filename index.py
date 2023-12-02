@@ -7,8 +7,8 @@ from utils.utils import estilo_tabla
 
 import dash_bootstrap_components as dbc
 
-MTEDataFrame.FILES_TO_LOAD = ["Copia de BASE OPERACIÓN - AVELLANEDA.xlsx"]
-df = MTEDataFrame.get_instance()
+#MTEDataFrame.FILES_TO_LOAD = ["Copia de BASE OPERACIÓN - AVELLANEDA.xlsx"]
+
 
 price_df = pd.read_excel("PLANILLA BASE para armar SOLICITUD PAGO (2).xlsx",
                          sheet_name="BASE PRECIOS")
@@ -30,6 +30,14 @@ app = Dash(__name__, suppress_callback_exceptions=True,
 
 app.layout = html.Div([
         html.Div(id="div-izquierda-panel", className="botonera", children=[
+            html.Button(children=[dcc.Upload(id="upload-button",
+                           multiple=True,
+                           children=[html.A([
+                               html.Img(src=app.get_asset_url("img/upload.svg")),
+                               "Cargar archivo"
+                           ])]
+                           )]
+            ),
             html.H6(
                 "Filtros",
                 className="title-botonera"
@@ -82,7 +90,6 @@ app.layout = html.Div([
     ])
 ])
 
-
 @callback(
     [
         Output(component_id='summary-table', component_property='data'),
@@ -93,10 +100,14 @@ app.layout = html.Div([
         Input(component_id='date-picker', component_property='end_date'),
         Input(component_id='price-table', component_property='data'),
         Input(component_id='price-table', component_property='columns'),
-        Input(component_id='bonus-button', component_property='date')
-    ]
+        Input(component_id='bonus-button', component_property='date'),
+        Input(component_id="upload-button", component_property="filename")
+    ],
+    prevent_initial_call=True
 )
-def update_table(start_date, end_date, rows, columns, bonus_date):
+def update_table(start_date, end_date, rows, columns, bonus_date, filename):
+    MTEDataFrame.FILES_TO_LOAD=filename
+    df = MTEDataFrame.get_instance()
     try:
         df_filter = df.loc[df.FECHA >= start_date].copy()
         df_filter = df_filter.loc[df.FECHA <= end_date].copy()
